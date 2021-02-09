@@ -54,8 +54,8 @@ meltano-ui:
       container: meltano
       contents: |
         cd /project
-        meltano init etl 
-        cd etl
+        meltano init elt
+        cd elt
         rm -r .meltano
         meltano ui
   actions:
@@ -66,7 +66,7 @@ meltano-ui:
           type: string
         resource-name:
           type: string
-      code: exec("meltano", "/bin/sh", "-c", `cd etl && meltano add ${args["resource-type"]} ${args["resource-name"]}`)
+      code: exec("meltano", "/bin/sh", "-c", `cd elt && meltano add ${args["resource-type"]} ${args["resource-name"]}`)
     config:
       arguments:
         resource-name:
@@ -75,12 +75,12 @@ meltano-ui:
           type: string
         param-value:
           type: string   
-      code: exec("meltano", "/bin/sh", "-c", `cd etl && meltano config ${args["resource-name"]} set ${args["param-name"]} ${args["param-value"]}`)
+      code: exec("meltano", "/bin/sh", "-c", `cd elt && meltano config ${args["resource-name"]} set ${args["param-name"]} ${args["param-value"]}`)
     show-config:
       arguments:
         resource-name:
           type: string
-      code: exec("meltano", "/bin/sh", "-c", `cd etl && meltano config ${args["resource-name"]}`)
+      code: exec("meltano", "/bin/sh", "-c", `cd elt && meltano config ${args["resource-name"]}`)
     add-loader:
       arguments:
         name:
@@ -139,8 +139,8 @@ meltano-ui:
           type: string
         frequency:
           type: string # @once
-      code: exec("meltano", "/bin/sh", "-c", `cd etl && meltano schedule ${args["pipeline"]} ${args["extractor"]} ${args["loader"]} ${args["frequency"]}`)
-    etl:
+      code: exec("meltano", "/bin/sh", "-c", `cd elt && meltano schedule ${args["pipeline"]} ${args["extractor"]} ${args["loader"]} ${args["frequency"]}`)
+    elt:
       arguments:
         pipeline:
           type: string
@@ -148,7 +148,7 @@ meltano-ui:
           type: string
         loader:
           type: string
-      code: exec("meltano", "/bin/sh", "-c", `cd etl && meltano elt ${args["extractor"]} ${args["loader"]} --job_id=${args["pipeline"]} --full-refresh`)
+      code: exec("meltano", "/bin/sh", "-c", `cd elt && meltano elt ${args["extractor"]} ${args["loader"]} --job_id=${args["pipeline"]} --full-refresh`)
   depends:
     defines: depends
     wait-for:
