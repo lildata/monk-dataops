@@ -8,46 +8,49 @@ Get moncc - https://docs.monk.io/getting-started/monk-in-10-minutes
 
 Start `monkd -d` and login to Monk.
 
-```
-» monk login --email=<email> --password=<password>
+```bash
+monk login --email=<email> --password=<password>
 ```
 
 ## Create a cluster
 
 Create new cluster 
-```
-» monk cluster new --name=dataops-cluster --link=true
+```bash
+monk cluster new --name=dataops-cluster --link=true
 ```
 
 Prepare cloud credentials:
 - GCP service account key `/usr/local/etc/key.json` or other directory with full Compute access role.
-```
-» monk cluster provider add -p gcp -f /usr/local/etc/key.json
+```bash
+monk cluster provider add -p gcp -f /usr/local/etc/key.json
 ```
 - AWS IAM role with full EC2 access role and save your secret keys under `~/.aws/credentials` - Moncc will automatically source from `[default]`
-```
+```ini
 [default]
 aws_access_key_id=<aws_access_key_id>
 aws_secret_access_key=<aws_secret_access_key>
-
-» monk cluster provider add -p aws
+```
+```bash
+monk cluster provider add -p aws
 ```
 
 Provision cluster node instances
-```
-» monk cluster grow --provider=gcp --name=gcp-instance --tag=dataops --instance-type=n2-standard-2 --region=europe-west4 --disk-size=10 -m 4
+```bash
+monk cluster grow --provider=gcp --name=gcp-instance --tag=dataops --instance-type=n2-standard-2 --region=europe-west4 --disk-size=10 -m 4
 ```
 
 ## Deploy
 
 Load the template
-```
-» mncc load meltano.yaml 
+```bash
+monk load meltano.yaml 
 ```
 
 Deploy the stack 
+```bash
+monk run meltano/system
 ```
-➜ monk run meltano/system
+```
 ✔ Starting job... DONE
 ✔ Preparing nodes DONE
 ✔ Preparing containers DONE
@@ -77,7 +80,7 @@ Deploy the stack
        └─🔌 open 34.90.152.210:5432 (0.0.0.0:5432) -> 5432
 ```
 
-Look for meltano-ui workload if you'd like to use their GUI (above 35.204.91.138:5000 - your instance IP will be different)
+Look for meltano-ui workload if you'd like to use their GUI (above `35.204.91.138:5000` - your instance IP will be different)
 ```
  ├─🧊 Peer QmTBiVJw2dnXwNYdTALrYhSYvYaPtwK5F5aHkoeudop4er
  │  └─📦 templates-local-meltano-meltano-ui-meltano
@@ -89,8 +92,10 @@ Look for meltano-ui workload if you'd like to use their GUI (above 35.204.91.138
 ## Create dummy data in the source database
 
 Run this command to create a small template with test data to create data integration pipeline for.
+```bash
+monk do meltano/tap-db/init-data
 ```
-➜  monk do meltano/tap-db/init-data                                                            
+```
 ✔ Got action parameters
 ✔ Parse parameters success
 ✔ Running action: 
@@ -102,21 +107,21 @@ SELECT 2
 ## Add extractors and loaders
 
 Extractors are data sources (in our example Postgres) where the data is being synced from.
-```
+```bash
 monk do meltano/meltano-ui/add-loader name=target-postgres host=templates-local-meltano-target-db-postgres dbname=postgres schema=public username=postgres password=password
 ```
 Loaders are target databases (in our example Postgres) or storage where the data from extractors will be integrated to.
-```
+```bash
 monk do meltano/meltano-ui/add-extractor name=tap-postgres host=templates-local-meltano-tap-db-postgres dbname=postgres schema=public username=postgres password=password replication-method=FULL_TABLE
 ```
 
 ## Schedule data pipeline
 
 To schedule or edit your pipeline run below command specyfing name of your pipeline as well as extractor and loader.
-```
+```bash
 monk do meltano/meltano-ui/schedule-pipeline pipeline=p-to-p extractor=tap-postgres loader=target-postgres frequency=@once
 ```
 To execute the pipeline run
-```
+```bash
 monk do meltano/meltano-ui/run pipeline=p-to-p extractor=tap-postgres loader=target-postgres
 ```
