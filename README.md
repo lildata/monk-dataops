@@ -4,7 +4,7 @@
 
 Register account at https://monk.io/join
 
-Get moncc - https://docs.monk.io/getting-started/monk-in-10-minutes
+Get Monk - https://docs.monk.io/getting-started/monk-in-10-minutes
 
 Start `monkd -d` and login to Monk.
 
@@ -123,5 +123,5 @@ monk do meltano/meltano-ui/create-pipeline pipeline=p-to-p extractor=tap-postgre
 ```
 To execute the pipeline run
 ```bash
-monk do meltano/meltano-ui/etl pipeline=p-to-p extractor=tap-postgres loader=target-postgres
+monk do meltano/meltano-ui/elt pipeline=p-to-p extractor=tap-postgres loader=target-postgres
 ```
