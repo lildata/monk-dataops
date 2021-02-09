@@ -24,7 +24,7 @@ Prepare cloud credentials:
 ```bash
 monk cluster provider add -p gcp -f /usr/local/etc/key.json
 ```
-- AWS IAM role with full EC2 access role and save your secret keys under `~/.aws/credentials` - Moncc will automatically source from `[default]`
+- AWS IAM role with full EC2 access role and save your secret keys under `~/.aws/credentials` - Monk will automatically source from `[default]`
 ```ini
 [default]
 aws_access_key_id=<aws_access_key_id>
