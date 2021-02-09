@@ -140,7 +140,7 @@ meltano-ui:
         frequency:
           type: string # @once
       code: exec("meltano", "/bin/sh", "-c", `cd etl && meltano schedule ${args["pipeline"]} ${args["extractor"]} ${args["loader"]} ${args["frequency"]}`)
-    elt:
+    etl:
       arguments:
         pipeline:
           type: string
