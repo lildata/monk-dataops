@@ -114,9 +114,9 @@ monk do meltano/meltano-ui/add-extractor name=tap-postgres host=templates-local-
 
 To schedule or edit your pipeline run below command specyfing name of your pipeline as well as extractor and loader.
 ```
-monk do meltano/meltano-ui/schedule-pipeline pipeline=p-to-p extractor=tap-postgres loader=target-postgres frequency=@once
+monk do meltano/meltano-ui/create-pipeline pipeline=p-to-p extractor=tap-postgres loader=target-postgres frequency=@once
 ```
 To execute the pipeline run
 ```
-monk do meltano/meltano-ui/run pipeline=p-to-p extractor=tap-postgres loader=target-postgres
+monk do meltano/meltano-ui/etl pipeline=p-to-p extractor=tap-postgres loader=target-postgres
 ```
