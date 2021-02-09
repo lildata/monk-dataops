@@ -123,5 +123,5 @@ monk do meltano/meltano-ui/create-pipeline pipeline=p-to-p extractor=tap-postgre
 ```
 To execute the pipeline run
 ```bash
-monk do meltano/meltano-ui/elt pipeline=p-to-p extractor=tap-postgres loader=target-postgres
+monk do meltano/meltano-ui/etl pipeline=p-to-p extractor=tap-postgres loader=target-postgres
 ```
