@@ -38,7 +38,7 @@ Provision cluster node instances
 » monk cluster grow --provider=gcp --name=gcp-instance --tag=dataops --instance-type=n2-standard-2 --region=europe-west4 --disk-size=10 -m 4
 ```
 
-### Deploy
+## Deploy
 
 Load the template
 ```
@@ -86,9 +86,7 @@ Look for meltano-ui workload if you'd like to use their GUI (above 35.204.91.138
  │     └─🔌 open 35.204.91.138:5000 -> 5000
 ```
 
-### Interact
-
-# Create dummy data in the source database
+## Create dummy data in the source database
 
 Run this command to create a small template with test data to create data integration pipeline for.
 ```
@@ -101,7 +99,7 @@ SELECT 2
 ✨ Took: 5s
 ```
 
-# Add extractors and loaders
+## Add extractors and loaders
 
 Extractors are data sources (in our example Postgres) where the data is being synced from.
 ```
@@ -112,7 +110,7 @@ Loaders are target databases (in our example Postgres) or storage where the data
 monk do meltano/meltano-ui/add-extractor name=tap-postgres host=templates-local-meltano-tap-db-postgres dbname=postgres schema=public username=postgres password=password replication-method=FULL_TABLE
 ```
 
-# Schedule data pipeline
+## Schedule data pipeline
 
 To schedule or edit your pipeline run below command specyfing name of your pipeline as well as extractor and loader.
 ```
