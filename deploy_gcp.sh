@@ -2,7 +2,6 @@
 
 set -ex
 
-CURRENT_DIR="${PWD##*/}"
 GCP_KEY="/usr/local/etc/key2.json"
 
 monk login --email=$MONCC_MAIL --password=$MONCC_APASS
