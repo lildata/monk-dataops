@@ -1,0 +1,165 @@
+namespace: /meltano
+
+tap-db:
+  defines: runnable
+  inherits: /postgres/12-alpine
+  containers:
+    postgres:
+      environment:
+        - POSTGRES_PASSWORD=password
+  actions:
+    defines: actions
+    init-data:
+      code: exec("postgres", "/bin/sh", "-c", `psql -Upostgres postgres -c "DROP TABLE IF EXISTS lookup; CREATE TABLE lookup as select * from (VALUES (1, 'test1'), (2, 'test2')) as t (key, value);"`)
+
+target-db:
+  defines: runnable
+  inherits: /postgres/12-alpine
+  containers:
+    postgres:
+      environment:
+        - POSTGRES_PASSWORD=password
+
+meltano-db:
+  defines: runnable
+  inherits: /postgres/12-alpine
+  containers:
+    postgres:
+      environment:
+        - POSTGRES_PASSWORD=password
+
+meltano-ui:
+  defines: runnable
+  containers:
+    defines: containers
+    meltano:
+      image: meltano/meltano:latest # latest-python3.8
+      bash: <- `/bin/sh /init.sh`
+      ports:
+        - 5000:5000
+      paths: 
+        - <- `${moncc-volume-path}/output:/project`
+      environment:
+        - MELTANO_CLI_LOG_LEVEL=debug
+        - <- `MELTANO_DATABASE_URI=postgresql://postgres:password@${meltano-db}/postgres`
+  variables:
+    defines: variables
+    meltano-db:
+      type: string
+      value: <- get-hostname("meltano/meltano-db", "postgres")
+  files:
+    defines: files
+    init:
+      path: /init.sh
+      container: meltano
+      contents: |
+        cd /project
+        meltano init etl 
+        cd etl
+        rm -r .meltano
+        meltano ui
+  actions:
+    defines: actions
+    add:
+      arguments:
+        resource-type:
+          type: string
+        resource-name:
+          type: string
+      code: exec("meltano", "/bin/sh", "-c", `cd etl && meltano add ${args["resource-type"]} ${args["resource-name"]}`)
+    config:
+      arguments:
+        resource-name:
+          type: string
+        param-name:
+          type: string
+        param-value:
+          type: string   
+      code: exec("meltano", "/bin/sh", "-c", `cd etl && meltano config ${args["resource-name"]} set ${args["param-name"]} ${args["param-value"]}`)
+    show-config:
+      arguments:
+        resource-name:
+          type: string
+      code: exec("meltano", "/bin/sh", "-c", `cd etl && meltano config ${args["resource-name"]}`)
+    add-loader:
+      arguments:
+        name:
+          type: string
+        host:
+          type: string
+        dbname:
+          type: string
+        schema:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+      code: |
+        act("meltano/meltano-ui/add", "resource-type", "loader", "resource-name", $args["name"])
+        act("meltano/meltano-ui/config", "resource-name", $args["name"], "param-name", "postgres_host", "param-value", $args["host"])
+        act("meltano/meltano-ui/config", "resource-name", $args["name"], "param-name", "postgres_database", "param-value", $args["dbname"])
+        act("meltano/meltano-ui/config", "resource-name", $args["name"], "param-name", "postgres_username", "param-value", $args["username"])
+        act("meltano/meltano-ui/config", "resource-name", $args["name"], "param-name", "postgres_password", "param-value", $args["password"])
+        act("meltano/meltano-ui/config", "resource-name", $args["name"], "param-name", "postgres_schema", "param-value", $args["schema"])
+        act("meltano/meltano-ui/show-config", "resource-name", $args["name"])
+    add-extractor:
+      arguments:
+        name:
+          type: string
+        host:
+          type: string
+        dbname:
+          type: string
+        schema:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        replication-method:
+          type: string
+      code: |
+        act("meltano/meltano-ui/add", "resource-type", "extractor", "resource-name", $args["name"])
+        act("meltano/meltano-ui/config", "resource-name", $args["name"], "param-name", "host", "param-value", $args["host"])
+        act("meltano/meltano-ui/config", "resource-name", $args["name"], "param-name", "dbname", "param-value", $args["dbname"])
+        act("meltano/meltano-ui/config", "resource-name", $args["name"], "param-name", "username", "param-value", $args["username"])
+        act("meltano/meltano-ui/config", "resource-name", $args["name"], "param-name", "password", "param-value", $args["password"])
+        act("meltano/meltano-ui/config", "resource-name", $args["name"], "param-name", "filter_schemas", "param-value", $args["schema"])
+        act("meltano/meltano-ui/config", "resource-name", $args["name"], "param-name", "default_replication_method", "param-value", $args["replication-method"])
+        act("meltano/meltano-ui/show-config", "resource-name", $args["name"])
+    create-pipeline:
+      description: Configure data pipeline into Meltano
+      arguments:
+        pipeline:
+          type: string
+        extractor:
+          type: string
+        loader:
+          type: string
+        frequency:
+          type: string # @once
+      code: exec("meltano", "/bin/sh", "-c", `cd etl && meltano schedule ${args["pipeline"]} ${args["extractor"]} ${args["loader"]} ${args["frequency"]}`)
+    elt:
+      arguments:
+        pipeline:
+          type: string
+        extractor:
+          type: string
+        loader:
+          type: string
+      code: exec("meltano", "/bin/sh", "-c", `cd etl && meltano elt ${args["extractor"]} ${args["loader"]} --job_id=${args["pipeline"]} --full-refresh`)
+  depends:
+    defines: depends
+    wait-for:
+      runnables:
+        - /meltano/meltano-db
+      timeout: 60
+
+system:
+  defines: process-group
+  runnable-list:
+      - /meltano/meltano-db
+      - /meltano/meltano-ui
+      - /meltano/target-db
+      - /meltano/tap-db
