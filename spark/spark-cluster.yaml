@@ -1,0 +1,123 @@
+namespace: /apache-spark
+common:
+  metadata:
+    defines: metadata
+    name: Apache Spark
+    description: Apache Spark is an open-source distributed general-purpose cluster-computing framework.
+    tags: spark
+    website: https://spark.apache.org/
+    source: https://github.com/bitnami/bitnami-docker-spark
+    publisher: "Bitnami"
+  containers:
+    defines: containers
+    spark:
+      image: bitnami/spark
+      image-tag: latest
+      ports:
+        - <- `0.0.0.0:${spark-ui-port}:${spark-ui-port}`
+      environment:
+        - <- `SPARK_MODE=${spark-mode}`
+        - <- `SPARK_MASTER_URL=${spark-master-url}`
+        - <- `SPARK_WORKER_MEMORY=${spark-worker-memory}`
+        - <- `SPARK_WORKER_CORES=${spark-worker-cores}`
+        - <- `SPARK_RPC_AUTHENTICATION_ENABLED=${spark-rpc-authentication-enabled}`
+        - <- `SPARK_RPC_AUTHENTICATION_SECRET=${spark-rpc-authentication-secret}`
+        - <- `SPARK_RPC_ENCRYPTION_ENABLED=${spark-rpc-encryption-enabled}`
+        - <- `SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=${spark-local-storage-encryption-enabled}`
+        - <- `SPARK_SSL_ENABLED=${spark-ssl-enabled}`
+        - <- `SPARK_SSL_KEY_PASSWORD=${spark-ssl-key-password}`
+        - <- `SPARK_SSL_KEYSTORE_PASSWORD=${spark-ssl-keystore-password}`
+        - <- `SPARK_SSL_TRUSTSTORE_PASSWORD=${spark-ssl-truststore-password}`
+        - <- `SPARK_SSL_NEED_CLIENT_AUTH=${spark-ssl-need-client-auth}`
+        - <- `SPARK_SSL_PROTOCOL=${spark-ssl-protocol}`
+        - <- `SPARK_DAEMON_USER=${spark-ssl-daemon-user}`
+        - <- `SPARK_DAEMON_GROUP=${spark-ssl-daemon-group}`
+        - <- `SPARK_MASTER_HOST=${spark-master-host}`
+  variables:
+    defines: variables
+    spark-mode:
+      type: string
+      value: "master"
+    spark-ui-port:
+      type: int
+      value: 8080
+    spark-port:
+      type: int
+      value: 7077
+    spark-master-host:
+     type: string
+     value: "localhost"
+    spark-master-url:
+     type: string
+     value: <- `spark://${spark-master-host}:${spark-port}`
+    spark-worker-memory:
+      type: string
+      value: "4g"
+    spark-worker-cores:
+      type: int
+      value: 2
+    spark-rpc-authentication-enabled:
+      type: string
+      value: "no"
+    spark-rpc-authentication-secret:
+      type: string
+      value: ""
+    spark-rpc-encryption-enabled:
+      type: string
+      value: "no"
+    spark-local-storage-encryption-enabled:
+      type: string
+      value: "no"
+    spark-ssl-enabled:
+      type: string
+      value: "no"
+    spark-ssl-key-password:
+      type: string
+      value: ""
+    spark-ssl-keystore-password:
+      type: string
+      value: ""
+    spark-ssl-truststore-password:
+      type: string
+      value: ""
+    spark-ssl-need-client-auth:
+      type: string
+      value: "yes"
+    spark-ssl-protocol:
+      type: string
+      value: "TLSv1.2"
+    spark-ssl-daemon-user:
+      type: string
+      value: "spark"
+    spark-ssl-daemon-group:
+      type: string
+      value: "spark"
+
+spark-master:
+  defines: runnable
+  inherits: ./common
+  containers:
+    spark:
+      ports:
+        - <- `0.0.0.0:${spark-ui-port}:${spark-ui-port}`
+        - <- `0.0.0.0:${spark-port}:${spark-port}`
+  variables:
+    spark-ui-port: 8080
+    spark-mode: master
+    spark-master-host: <- get-hostname("apache-spark/spark-master", "spark")
+
+spark-worker-1:
+  defines: runnable
+  inherits: ./common
+  variables:
+    spark-ui-port: 8081
+    spark-mode: worker
+    spark-master-host: <- get-hostname("apache-spark/spark-master", "spark")
+
+spark-worker-2:
+  defines: runnable
+  inherits: ./common
+  variables:
+    spark-ui-port: 8082
+    spark-mode: worker
+    spark-master-host: <- get-hostname("apache-spark/spark-master", "spark")

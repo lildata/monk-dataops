@@ -1,13 +1,9 @@
 #!/bin/bash
 
-set -ex
+monk login
 
-GCP_KEY="/usr/local/etc/key2.json"
-
-monk login --email=$MONCC_MAIL --password=$MONCC_APASS
-
-monk c new -n dataops-cluster
-monk c provider add -p gcp -f $GCP_KEY
+monk cluster new -n dataops-cluster
+monk cluster provider add -p gcp
 
 monk cluster grow --provider=gcp \
     --name=dataops \
@@ -17,5 +13,4 @@ monk cluster grow --provider=gcp \
     --zone=europe-west4-c \
     --disk-size=10 -m 4
 
-monk load chaos-cluster.yaml
-monk run meltano/system
+monk cluster peers
