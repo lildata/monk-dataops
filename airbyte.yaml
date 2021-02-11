@@ -1,0 +1,163 @@
+namespace: /airbyte
+
+references:
+  references: &references
+    image-tag: 0.14.1-alpha
+    environment: 
+      - <- `DATABASE_USER=${db-user}`
+      - <- `DATABASE_PASSWORD=${db-password}`
+      - <- `DATABASE_URL=jdbc:postgresql://${db-host}:5432/${db-name}`
+      - WAIT_BEFORE_HOSTS=5
+      - WAIT_HOSTS_TIMEOUT=45
+      - <- `WAIT_HOSTS=${db-host}:5432`
+      - <- `WORKSPACE_ROOT=${workspace-root}`
+      # - WORKSPACE_DOCKER_MOUNT=${WORKSPACE_DOCKER_MOUNT}
+      - <- `LOCAL_DOCKER_MOUNT=${local-root}`
+      - <- `CONFIG_ROOT=${config-root}`
+      - <- `TRACKING_STRATEGY=${tracking-strategy}`
+      - <- `AIRBYTE_VERSION=${version}`
+      - AIRBYTE_ROLE=${AIRBYTE_ROLE:-}
+
+common:
+  variables:
+    defines: variables
+    version:
+      type: string
+      value: 0.14.1-alpha
+    tracking-strategy:
+      type: string
+      value: segment
+    db-user:
+      type: string
+      value: docker
+    db-password:
+      type: string
+      value: docker
+    db-name:
+      type: string
+      value: airbyte
+    db-host:
+      type: string
+      value: <- get-hostname("airbyte/airbyte-db", "airbyte-db")
+    local-root:
+      type: string
+      value: /tmp/airbyte_local
+    config-root:
+      type: string
+      value: /data
+    workspace-root:
+      type: string
+      value: /tmp/workspace
+    hack-local-root-parent:
+      type: string
+      value: /tmp
+
+airbyte-init:
+  defines: runnable 
+  inherits: ./common
+  containers: 
+    defines: containers
+    airbyte-db:
+      image: airbyte/init:0.14.1-alpha
+      # <<: *image-tag
+      bash: /bin/sh -c "./scripts/create_mount_directories.sh /local_parent ${hack-local-root-parent} ${local-root}"  
+      environment:
+        - <- `LOCAL_ROOT=${local-root}`
+        - <- `HACK_LOCAL_ROOT_PARENT=${hack-local-root-parent}`    
+      paths:
+        - <- `${hack-local-root-parent}:/local_parent`  
+
+airbyte-db:
+  defines: runnable 
+  inherits: ./common
+  containers: 
+    defines: containers
+    airbyte-db:
+      image: airbyte/db
+      <<: *references
+      user: root
+      environment:
+        - <- `POSTGRES_PASSWORD=${db-password}`
+        - <- `POSTGRES_USER=${db-user}`
+        - <- `DATABASE_DB=${db-name}`
+      paths:
+        - <- `${moncc-volume-path}/airbyte-db:/var/lib/postgresql/data`
+
+airbyte-data-seed:
+  defines: runnable
+  inherits: ./common
+  containers: 
+    defines: containers
+    airbyte-data-seed:
+      image: airbyte/seed
+      <<: *references
+      paths:
+        - <- `/tmp/data:/app/seed`
+
+airbyte-scheduler:
+  defines: runnable
+  inherits: ./common
+  containers: 
+    defines: containers
+    airbyte-data-seed:
+      image: airbyte/scheduler
+      <<: *references
+      paths:
+        - <- `/tmp/workspace:${workspace-root}`
+        - <- `${local-root}:${local-root}` #${moncc-volume-path}
+        - <- `/tmp/data:${config-root}`
+        # - /var/run/docker.sock:/var/run/docker.sock
+
+airbyte-server:
+  defines: runnable
+  inherits: ./common
+  containers: 
+    defines: containers
+    airbyte-data-seed:
+      image: airbyte/server:0.14.1-alpha
+      user: root
+      <<: *references
+      ports:
+        - 8001:8001
+      paths:
+        - <- `/tmp/workspace:${workspace-root}`
+        - <- `/tmp/data:${config-root}`
+        - <- `${local-root}:${local-root}` #${moncc-volume-path}
+      environment: 
+        - <- `DATABASE_USER=${db-user}`
+        - <- `DATABASE_PASSWORD=${db-password}`
+        - <- `DATABASE_URL=jdbc:postgresql://${db-host}:5432/${db-name}`
+        - WAIT_BEFORE_HOSTS=5
+        - WAIT_HOSTS_TIMEOUT=45
+        - <- `WAIT_HOSTS=${db-host}:5432`
+        - <- `CONFIG_ROOT=${config-root}`
+        - <- `TRACKING_STRATEGY=${tracking-strategy}`
+        - <- `AIRBYTE_VERSION=${version}`
+        - AIRBYTE_ROLE=${AIRBYTE_ROLE:-}
+        - <- `WORKSPACE_ROOT=${workspace-root}`
+
+airbyte-webapp:
+  defines: runnable
+  inherits: ./common
+  containers: 
+    defines: containers
+    airbyte-data-seed:
+      image: airbyte/webapp:0.14.1-alpha
+      user: root
+      <<: *references
+      ports:
+        - 8000:80 
+      environment:
+        - AIRBYTE_ROLE=${AIRBYTE_ROLE:-}
+        - <- `AIRBYTE_VERSION=${version}`
+        - API_URL=${API_URL}
+        - IS_DEMO=${IS_DEMO:-}
+        - PAPERCUPS_STORYTIME=${PAPERCUPS_STORYTIME:-}
+        - <- `TRACKING_STRATEGY=${tracking-strategy}`
+
+system:
+  defines: process-group
+  runnable-list:
+      - /airbyte/airbyte-init
+      - /airbyte/airbyte-db
+      - /airbyte/airbyte-data-seed
