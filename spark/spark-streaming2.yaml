@@ -1,0 +1,127 @@
+namespace: /spark-streaming
+
+zookeeper:
+  defines: runnable
+  inherits: /apache-kafka/zookeper
+
+kafka1:
+  defines: runnable
+  inherits: /apache-kafka/kafka-broker-1
+
+kafka2:
+  defines: runnable
+  inherits: /apache-kafka/kafka-broker-2
+
+kafka-manager:
+  defines: runnable
+  containers:
+    defines: containers
+    kafka-manager:
+      image: hlebalbau/kafka-manager:1.3.3.18
+      ports:
+        - <- `0.0.0.0:${kafka_local}:${kafka_container}`
+      environment:
+        - <- `ZK_HOSTS=${zookeeper-hostname}:${port}`
+        - <- `APPLICATION_SECRET=${secret}`
+  variables:
+    defines: variables
+    kafka_local:
+      type: string
+      value: 9000
+    kafka_container:
+      type: string
+      value: 9000
+    zookeeper-hostname:
+      type: string
+      value: <- get-hostname("spark-streaming/zookeeper", "zookeeper")
+    port:
+      type: string
+      value: 2181
+    secret: 
+      type: string
+      value: "random-secret"
+
+spark-master:
+  defines: runnable
+  inherits: /apache-spark/common
+  containers:
+    spark:
+      ports:
+        - <- `0.0.0.0:${spark-ui-port}:${spark-ui-port}`
+        - <- `0.0.0.0:${spark-port}:${spark-port}`
+  variables:
+    spark-ui-port: 8080
+    spark-mode: master
+    spark-master-host: <- get-hostname("spark-streaming/spark-master", "spark")
+
+spark-worker-1:
+  defines: runnable
+  inherits: /apache-spark/common
+  variables:
+    spark-ui-port: 8081
+    spark-mode: worker
+    spark-master-host: <- get-hostname("spark-streaming/spark-master", "spark")
+
+spark-worker-2:
+  defines: runnable
+  inherits: /apache-spark/common
+  variables:
+    spark-ui-port: 8082
+    spark-mode: worker
+    spark-master-host: <- get-hostname("spark-streaming/spark-master", "spark")
+    
+prometheus:
+  defines: runnable
+  containers:
+    defines: containers
+    prometheus:
+      image: docker.io/whitenoi5/stream-prometheus:latest
+      ports:
+        - <- `0.0.0.0:${prom_local}:${prom_container}`
+  variables:
+    defines: variables
+    prom_local:
+      type: string
+      value: 9090
+    prom_container:
+      type: string
+      value: 9090
+
+grafana:
+  defines: runnable
+  containers:
+    defines: containers
+    grafana:
+      image: docker.io/whitenoi5/stream-grafana:latest
+      ports:
+        - <- `0.0.0.0:${graf_local}:${graf_container}`
+      environment:
+        - <- `GF_SECURITY_ADMIN_PASSWORD=${password}`
+  variables:
+    defines: variables
+    graf_local:
+      type: string
+      value: 3000
+    graf_container:
+      type: string
+      value: 3000
+    password:
+      type: string
+      value: password
+
+zeppelin:
+  defines: runnable
+  inherits: /apache-zeppelin/example-notebook
+
+stack:
+    defines: process-group
+    runnable-list:
+        - /spark-streaming/zookeeper
+        - /spark-streaming/kafka1
+        - /spark-streaming/kafka2
+        - /spark-streaming/spark-master
+        - /spark-streaming/spark-worker-1
+        - /spark-streaming/kafka-manager
+        - /spark-streaming/prometheus
+        - /spark-streaming/grafana
+        - /spark-streaming/zeppelin

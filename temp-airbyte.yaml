@@ -1,0 +1,238 @@
+namespace: /airbyte
+
+init:
+  defines: runnable
+  containers:
+    defines: containers
+    init:
+      image: docker.io/airbyte/init:0.14.1-alpha
+      environment:
+        - <- `LOCAL_ROOT=${LOCAL_ROOT}`
+        - <- `HACK_LOCAL_ROOT_PARENT=${HACK_LOCAL_ROOT_PARENT}`
+      paths:
+        - <- `${HACK_LOCAL_ROOT_PARENT}:/opt/airbyte`
+      bash: /bin/sh -c "./scripts/create_mount_directories.sh /local_parent ${HACK_LOCAL_ROOT_PARENT} ${LOCAL_ROOT}"  
+  variables:
+    defines: variables
+    LOCAL_ROOT:
+      type: string
+      value: "/tmp/airbyte_local"
+    HACK_LOCAL_ROOT_PARENT:
+      type: string
+      value: "/tmp"
+
+db:
+  defines: runnable
+  containers:
+    defines: containers
+    db:
+      image: docker.io/airbyte/db:0.14.1-alpha
+      environment:
+        - <- `POSTGRES_USER=${DATABASE_USER}`
+        - <- `POSTGRES_PASSWORD=${DATABASE_PASSWORD}`
+        - <- `POSTGRES_DB=${DATABASE_DB}`
+        - <- `DB_DOCKER_MOUNT=${DB_DOCKER_MOUNT}`
+      paths:
+        - <- `${DB_DOCKER_MOUNT}:/var/lib/postgresql/data`
+  variables:
+    defines: variables
+    DATABASE_USER:
+      type: string
+      value: docker
+    
+    DATABASE_PASSWORD:
+      type: string
+      value: docker
+
+    DATABASE_DB:
+      type: string
+      value: airbyte
+    
+    DB_DOCKER_MOUNT:
+      type: string
+      value: airbyte-db
+
+seed:
+  defines: runnable
+  containers:
+    defines: containers
+    seed:
+      image: docker.io/airbyte/seed:0.14.1-alpha
+      paths:
+        - <- `data:/app/seed`
+
+scheduler:
+  defines: runnable
+  containers:
+    defines: containers
+    scheduler:
+      image: airbyte/scheduler:0.14.1-alpha
+      environment:
+        - <- `DATABASE_USER=${DATABASE_USER}`
+        - <- `DATABASE_PASSWORD=${DATABASE_PASSWORD}`
+        - <- `DATABASE_URL=jdbc:postgresql://${WAIT_HOSTS}/${DATABASE_DB}`
+        - <- `WAIT_BEFORE_HOSTS=${WAIT_BEFORE_HOSTS}`
+        - <- `WAIT_HOSTS_TIMEOUT=${WAIT_HOSTS_TIMEOUT}`
+        - <- `WAIT_HOSTS=${WAIT_HOSTS}:5432`
+        - <- `WORKSPACE_ROOT=${WORKSPACE_ROOT}`
+        - <- `WORKSPACE_DOCKER_MOUNT=${WORKSPACE_DOCKER_MOUNT}`
+        - <- `LOCAL_DOCKER_MOUNT=${LOCAL_DOCKER_MOUNT}`
+        - <- `CONFIG_ROOT=${CONFIG_ROOT}`
+        - <- `TRACKING_STRATEGY=${TRACKING_STRATEGY}`
+        - <- `AIRBYTE_VERSION=${AIRBYTE_VERSION}`
+        - <- `AIRBYTE_ROLE=${AIRBYTE_ROLE:-}`
+        - <- `LOCAL_ROOT=${LOCAL_ROOT}`
+      paths:
+        - <- `/var/run/docker.sock:/var/run/docker.sock`
+        - <- `workspace:${WORKSPACE_ROOT}`
+        - <- `${LOCAL_ROOT}:${LOCAL_ROOT}`
+        - <- `data:${CONFIG_ROOT}`
+  variables:
+    defines: variables
+    DATABASE_DB:
+      type: string
+      value: "airbyte"
+    LOCAL_DOCKER_MOUNT:
+      type: string
+      value: "/tmp/airbyte_local"
+    DATABASE_USER:
+      type: string
+      value: docker
+
+    DATABASE_PASSWORD:
+      type: string
+      value: docker
+
+    WAIT_BEFORE_HOSTS:
+      type: int
+      value: 5
+
+    WAIT_HOSTS_TIMEOUT:
+      type: int
+      value: 45
+
+    WAIT_HOSTS:
+      type: string
+      value: <- get-hostname("airbyte/db", "db")
+
+    WORKSPACE_ROOT:
+      type: string
+      value: "/tmp/workspace"
+
+    WORKSPACE_DOCKER_MOUNT:
+      type: string
+      value: "airbyte_workspace"
+
+    CONFIG_ROOT:
+      type: string
+      value: "/data"
+
+    TRACKING_STRATEGY:
+      type: string
+      value: segment
+
+    LOCAL_ROOT:
+      type: string
+      value: "/tmp/airbyte_local"
+
+    AIRBYTE_VERSION:
+      type: string
+      value: "0.14.1-alpha"
+
+server:
+  defines: runnable
+  containers:
+    defines: containers
+    server:
+      image: docker.io/airbyte/server:0.14.1-alpha
+      environment:
+        - <- `DATABASE_USER=${DATABASE_USER}`
+        - <- `DATABASE_PASSWORD=${DATABASE_PASSWORD}`
+        - <- `DATABASE_URL=jdbc:postgresql://${WAIT_HOSTS}:5432/${DATABASE_DB}`
+        - <- `WAIT_BEFORE_HOSTS=${WAIT_BEFORE_HOSTS}`
+        - <- `WAIT_HOSTS_TIMEOUT=${WAIT_HOSTS_TIMEOUT}`
+        - <- `WAIT_HOSTS=${WAIT_HOSTS}:5432`
+        - <- `CONFIG_ROOT=${CONFIG_ROOT}`
+        - <- `TRACKING_STRATEGY=${TRACKING_STRATEGY}`
+        - <- `AIRBYTE_VERSION=${AIRBYTE_VERSION}`
+        - <- `AIRBYTE_ROLE=${AIRBYTE_ROLE:-}`
+        - <- `WORKSPACE_ROOT=${WORKSPACE_ROOT}`
+      ports:
+        - '8001:8001'
+      paths:
+        - <- `workspace:${WORKSPACE_ROOT}`
+        - <- `data:${CONFIG_ROOT}`
+  variables:
+    defines: variables
+    AIRBYTE_VERSION:
+      type: string
+      value: 0.14.1-alpha
+    DATABASE_DB:
+      type: string
+      value: airbyte
+    DATABASE_USER:
+      type: string
+      value: docker
+
+    DATABASE_PASSWORD:
+      type: string
+      value: docker
+
+    WAIT_BEFORE_HOSTS:
+      type: int
+      value: 5
+
+    WAIT_HOSTS_TIMEOUT:
+      type: int
+      value: 45
+
+    WAIT_HOSTS:
+      type: string
+      value: <- get-hostname("airbyte/db", "db")
+
+    CONFIG_ROOT:
+      type: string
+      value: "/data"
+
+    TRACKING_STRATEGY:
+      type: string
+      value: segment
+
+    WORKSPACE_ROOT:
+      type: string
+      value: /tmp/workspace
+
+webapp:
+  defines: runnable
+  containers:
+    defines: containers
+    webapp:
+      image: docker.io/airbyte/webapp:0.14.1-alpha
+      environment:
+        - <- `AIRBYTE_ROLE=${AIRBYTE_ROLE:-}`
+        - <- `AIRBYTE_VERSION=${AIRBYTE_VERSION}`
+        - <- `API_URL=${API_URL}`
+        - <- `IS_DEMO=${IS_DEMO:-}`
+        - <- `PAPERCUPS_STORYTIME=${PAPERCUPS_STORYTIME:-}`
+        - <- `TRACKING_STRATEGY=${TRACKING_STRATEGY}`
+      ports:
+        - '8000:80'
+  
+  variables:
+    defines: variables
+    AIRBYTE_VERSION:
+      type: string
+      value: "0.14.1-alpha"
+    TRACKING_STRATEGY:
+      type: string
+      value: segment
+
+airbyte-stack:
+  defines: process-group
+  runnable-list:
+    - /airbyte/init
+    - /airbyte/db
+    - /airbyte/seed
+    - /airbyte/scheduler
+    - /airbyte/server
+    - /airbyte/webapp

@@ -1,0 +1,117 @@
+namespace: /apache-kafka
+
+zookeeper:
+  defines: runnable
+  metadata:
+    defines: metadata
+    name: Apache Zookeper
+    description: Apache ZooKeeper is an effort to develop and maintain an open-source server which enables highly reliable distributed coordination.
+    tags: configuration, services
+    website: https://zookeeper.apache.org/
+    source: https://github.com/apache/zookeeper
+    publisher: monk.io
+    icon: https://storage.googleapis.com/template_logos/zookeper.gif
+  containers:
+    defines: containers
+    zookeeper:
+      image: wurstmeister/zookeeper:latest 
+      ports:
+        - <- `0.0.0.0:${zookeeper-port}:2181`
+      environment:
+        - <- `ZOOKEEPER_CLIENT_PORT=${zookeeper-port}`
+        - ALLOW_PLAINTEXT_LISTENER=yes
+        - ALLOW_ANONYMOUS_LOGIN=yes
+      paths: 
+        - <- `${volume_local}:${volume_container}`
+  variables:
+    defines: variables
+    zookeeper-port:
+      type: int
+      value: 2181
+    volume_local:
+      type: string
+      value: <- `${moncc-volume-path}/zookeeper`
+    volume_container:
+      type: string
+      value: "/opt/zookeeper-3.4.13/data"
+
+broker-definition:  
+  metadata:
+    defines: metadata
+    name: Apache Kafka
+    description: Apache Kafka is an open-source distributed event streaming platform used by thousands of companies for high-performance data pipelines, streaming analytics, data integration, and mission-critical applications. 
+    tags: streaming,data,analytics,integration
+    website: https://clickhouse.tech/
+    source: https://github.com/ClickHouse/ClickHouse
+    publisher: monk.io
+    icon: https://storage.googleapis.com/template_logos/clickhouse.logo_.png
+  containers:
+    defines: containers
+    kafka:
+      image: docker.io/whitenoi5/stream-kafka:latest 
+      bash: <- `start-kafka.sh`
+      ports:
+        - <- `0.0.0.0:${broker-port}:${broker-port}`
+      environment:
+        - <- `KAFKA_ADVERTISED_HOST_NAME=${broker-internal-port}`
+        - <- `KAFKA_ZOOKEEPER_CONNECT=${zookeeper-host-name}:${zookeeper-port}`
+        - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+        - <- `KAFKA_LISTENERS=PLAINTEXT://:${broker-internal-port},PLAINTEXT_HOST://:${broker-port}`
+        - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+        - <- `KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${broker-internal-host-name}:${broker-internal-port},PLAINTEXT_HOST://localhost:${broker-port}`
+        - <- `KAFKA_JMX_OPTS=${opts}`
+      paths:
+        - <- `${moncc-volume-path}/kafka:/opt/kafka_2.12-2.2.0/logs`
+  variables:
+    defines: variables
+    broker-port:
+      type: int
+      value: 9092
+    broker-internal-host-name:
+      type: string
+      value: localhost
+    broker-internal-port:
+      type: int
+      value: 29092
+    zookeeper-host-name:
+      type: string
+      value: localhost
+    zookeeper-port:
+      type: int
+      value: 2181
+    port:
+      type: string
+      value: 2181
+    opts:
+      type: string
+      value: "-javaagent:/prometheus/jmx_prometheus_javaagent-0.3.1.jar=8080:/prometheus/kafka-0-8-2.yml"
+
+kafka-broker-1:
+  defines: runnable
+  inherits: ./broker-definition
+  variables:
+    broker-internal-host-name: <- get-hostname("apache-kafka/kafka-broker-1", "kafka")
+    zookeeper-host-name: <- get-hostname("apache-kafka/zookeeper", "zookeeper")
+
+kafka-broker-2:
+  defines: runnable
+  inherits: ./broker-definition
+  variables:
+    broker-internal-host-name: <- get-hostname("apache-kafka/kafka-broker-2", "kafka")
+    zookeeper-host-name: <- get-hostname("apache-kafka/zookeeper", "zookeeper")
+
+cluster-1-zookeeper-2-brokers:
+  defines: process-group
+  metadata:
+    defines: metadata
+    name: Apache Kafka
+    description: Apache Kafka Cluster. Apache Kafka is an open-source distributed event streaming platform used by thousands of companies for high-performance data pipelines, streaming analytics, data integration, and mission-critical applications. 
+    tags: streaming,data,analytics,integration
+    website: https://clickhouse.tech/
+    source: https://github.com/ClickHouse/ClickHouse
+    publisher: monk.io
+    icon: https://storage.googleapis.com/template_logos/clickhouse.logo_.png
+  runnable-list:
+      - /apache-kafka/zookeeper
+      - /apache-kafka/kafka-broker-1
+      - /apache-kafka/kafka-broker-2

@@ -11,6 +11,6 @@ monk cluster grow --provider=gcp \
     --instance-type=n2-standard-2 \
     --region=europe-west4 \
     --zone=europe-west4-c \
-    --disk-size=10 -m 4
+    --disk-size=10 -m 3
 
 monk cluster peers
