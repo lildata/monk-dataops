@@ -64,7 +64,7 @@ airbyte-init:
     defines: containers
     airbyte-init:
       image: airbyte/init
-      <<: *image-tag
+      <<: *references
       bash: /bin/sh -c "./scripts/create_mount_directories.sh /local_parent ${hack-local-root-parent} ${local-root}"  
       environment:
         - <- `LOCAL_ROOT=${local-root}`
