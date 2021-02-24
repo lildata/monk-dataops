@@ -4,7 +4,7 @@
 
 Register account at https://monk.io/join
 
-Get Monk - https://docs.monk.io/getting-started/monk-in-10-minutes
+Get Monk - https://docs.monk.io/monk-in-10/
 
 Start `monkd -d` and login to Monk.
 
